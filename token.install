@@ -43,7 +43,7 @@ function token_requirements($phase = 'runtime') {
  * Implements hook_schema().
  */
 function token_schema() {
-  $schema['cache_token'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_token'] = backdrop_get_schema_unprocessed('system', 'cache');
   $schema['cache_token']['description'] = 'Cache table for token information.';
   return $schema;
 }
@@ -53,7 +53,7 @@ function token_schema() {
  */
 function token_update_7000() {
   if (!db_table_exists('cache_token')) {
-    $schema = drupal_get_schema_unprocessed('system', 'cache');
+    $schema = backdrop_get_schema_unprocessed('system', 'cache');
     $schema['description'] = 'Cache table for token information.';
     db_create_table('cache_token', $schema);
   }

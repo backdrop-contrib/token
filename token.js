@@ -1,7 +1,7 @@
 
 (function ($) {
 
-Drupal.behaviors.tokenTree = {
+Backdrop.behaviors.tokenTree = {
   attach: function (context, settings) {
     $('table.token-tree', context).once('token-tree', function () {
       $(this).treeTable();
@@ -9,19 +9,19 @@ Drupal.behaviors.tokenTree = {
   }
 };
 
-Drupal.behaviors.tokenDialog = {
+Backdrop.behaviors.tokenDialog = {
   attach: function (context, settings) {
     $('a.token-dialog', context).once('token-dialog').click(function() {
       var url = $(this).attr('href');
-      var dialog = $('<div style="display: none" class="loading">' + Drupal.t('Loading token browser...') + '</div>').appendTo('body');
+      var dialog = $('<div style="display: none" class="loading">' + Backdrop.t('Loading token browser...') + '</div>').appendTo('body');
 
       // Emulate the AJAX data sent normally so that we get the same theme.
       var data = {};
-      data['ajax_page_state[theme]'] = Drupal.settings.ajaxPageState.theme;
-      data['ajax_page_state[theme_token]'] = Drupal.settings.ajaxPageState.theme_token;
+      data['ajax_page_state[theme]'] = Backdrop.settings.ajaxPageState.theme;
+      data['ajax_page_state[theme_token]'] = Backdrop.settings.ajaxPageState.theme_token;
 
       dialog.dialog({
-        title: $(this).attr('title') || Drupal.t('Available tokens'),
+        title: $(this).attr('title') || Backdrop.t('Available tokens'),
         width: 700,
         close: function(event, ui) {
           dialog.remove();
@@ -41,20 +41,20 @@ Drupal.behaviors.tokenDialog = {
   }
 }
 
-Drupal.behaviors.tokenInsert = {
+Backdrop.behaviors.tokenInsert = {
   attach: function (context, settings) {
     // Keep track of which textfield was last selected/focused.
     $('textarea, input[type="text"]', context).focus(function() {
-      Drupal.settings.tokenFocusedField = this;
+      Backdrop.settings.tokenFocusedField = this;
     });
 
     $('.token-click-insert .token-key', context).once('token-click-insert', function() {
-      var newThis = $('<a href="javascript:void(0);" title="' + Drupal.t('Insert this token into your form') + '">' + $(this).html() + '</a>').click(function(){
-        if (typeof Drupal.settings.tokenFocusedField == 'undefined') {
-          alert(Drupal.t('First click a text field to insert your tokens into.'));
+      var newThis = $('<a href="javascript:void(0);" title="' + Backdrop.t('Insert this token into your form') + '">' + $(this).html() + '</a>').click(function(){
+        if (typeof Backdrop.settings.tokenFocusedField == 'undefined') {
+          alert(Backdrop.t('First click a text field to insert your tokens into.'));
         }
         else {
-          var myField = Drupal.settings.tokenFocusedField;
+          var myField = Backdrop.settings.tokenFocusedField;
           var myValue = $(this).text();
 
           //IE support

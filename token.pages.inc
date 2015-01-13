@@ -14,13 +14,13 @@ function theme_token_tree_link($variables) {
   }
 
   if (!empty($variables['dialog'])) {
-    drupal_add_library('token', 'dialog');
+    backdrop_add_library('token', 'dialog');
     $variables['options']['attributes']['class'][] = 'token-dialog';
   }
 
   $info = token_theme();
   $tree_variables = array_intersect_key($variables, $info['token_tree']['variables']);
-  $tree_variables = drupal_array_diff_assoc_recursive($tree_variables, $info['token_tree']['variables']);
+  $tree_variables = backdrop_array_diff_assoc_recursive($tree_variables, $info['token_tree']['variables']);
   if (!isset($variables['options']['query']['options'])) {
     $variables['options']['query']['options'] = array();
   }
@@ -32,12 +32,12 @@ function theme_token_tree_link($variables) {
 
   // Add a security token so that the tree page should only work when used
   // when the dialog link is output with theme('token_tree_link').
-  $variables['options']['query']['token'] = drupal_get_token('token-tree:' . serialize($variables['options']['query']['options']));
+  $variables['options']['query']['token'] = backdrop_get_token('token-tree:' . serialize($variables['options']['query']['options']));
 
   // Because PHP converts query strings with arrays into a different syntax on
   // the next request, the options have to be encoded with JSON in the query
   // string so that we can reliably decode it for token comparison.
-  $variables['options']['query']['options'] = drupal_json_encode($variables['options']['query']['options']);
+  $variables['options']['query']['options'] = backdrop_json_encode($variables['options']['query']['options']);
 
   // Set the token tree to open in a separate window.
   $variables['options']['attributes'] + array('target' => '_blank');
@@ -49,11 +49,11 @@ function theme_token_tree_link($variables) {
  * Page callback to output a token tree as an empty page.
  */
 function token_page_output_tree() {
-  $options = isset($_GET['options']) ? drupal_json_decode($_GET['options']) : array();
+  $options = isset($_GET['options']) ? backdrop_json_decode($_GET['options']) : array();
 
   // Check the token against the serialized options to prevent random access to
   // the token browser page.
-  if (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], 'token-tree:' . serialize($options))) {
+  if (!isset($_GET['token']) || !backdrop_valid_token($_GET['token'], 'token-tree:' . serialize($options))) {
     return MENU_ACCESS_DENIED;
   }
 
@@ -62,9 +62,9 @@ function token_page_output_tree() {
   $options['dialog'] = FALSE;
 
   $output = theme('token_tree', $options);
-  print '<html><head>' . drupal_get_css() . drupal_get_js() . '</head>';
+  print '<html><head>' . backdrop_get_css() . backdrop_get_js() . '</head>';
   print '<body class="token-tree">' . $output . '</body></html>';
-  drupal_exit();
+  backdrop_exit();
 }
 
 /**
@@ -82,7 +82,7 @@ function theme_tree_table($variables) {
   }
 
   if (!empty($variables['rows'])) {
-    drupal_add_library('token', 'treeTable');
+    backdrop_add_library('token', 'treeTable');
   }
 
   return theme('table', $variables);
@@ -162,8 +162,8 @@ function theme_token_tree($variables) {
     '#attributes' => array('class' => array('token-tree')),
     '#empty' => t('No tokens available'),
     '#attached' => array(
-      'js' => array(drupal_get_path('module', 'token') . '/token.js'),
-      'css' => array(drupal_get_path('module', 'token') . '/token.css'),
+      'js' => array(backdrop_get_path('module', 'token') . '/token.js'),
+      'css' => array(backdrop_get_path('module', 'token') . '/token.css'),
       'library' => array(array('token', 'treeTable')),
     ),
   );
@@ -173,7 +173,7 @@ function theme_token_tree($variables) {
     $element['#attributes']['class'][] = 'token-click-insert';
   }
 
-  $output = drupal_render($element);
+  $output = backdrop_render($element);
   token_render_cache_set($output, $element);
   return $output;
 }
@@ -221,12 +221,12 @@ function _token_token_tree_format_row($token, array $token_info, $is_group = FAL
 }
 
 /**
- * Wrapper function for drupal_clean_css_identifier() for use with tokens.
+ * Wrapper function for backdrop_clean_css_identifier() for use with tokens.
  *
  * This trims any brackets from the token and also cleans the colon character
  * to a hyphen.
  *
- * @see drupal_clean_css_identifier()
+ * @see backdrop_clean_css_identifier()
  */
 function _token_clean_css_identifier($id) {
   static $replacements = array(' ' => '-', '_' => '-', '/' => '-', '[' => '-', ']' => '', ':' => '--', '?' => '', '<' => '-', '>' => '-');
@@ -272,8 +272,8 @@ function token_devel_token_object($entity_type, $entity, $token_type = NULL) {
     '#attributes' => array('class' => array('token-tree')),
     '#empty' => t('No tokens available.'),
     '#attached' => array(
-      'js' => array(drupal_get_path('module', 'token') . '/token.js'),
-      'css' => array(drupal_get_path('module', 'token') . '/token.css'),
+      'js' => array(backdrop_get_path('module', 'token') . '/token.js'),
+      'css' => array(backdrop_get_path('module', 'token') . '/token.css'),
     ),
   );
 
@@ -284,13 +284,13 @@ function token_devel_token_object($entity_type, $entity, $token_type = NULL) {
  * Page callback to clear the token registry caches.
  */
 function token_flush_cache_callback() {
-  if (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], current_path())) {
+  if (!isset($_GET['token']) || !backdrop_valid_token($_GET['token'], current_path())) {
     return MENU_NOT_FOUND;
   }
 
   token_clear_cache();
-  drupal_set_message(t('Token registry caches cleared.'));
-  drupal_goto();
+  backdrop_set_message(t('Token registry caches cleared.'));
+  backdrop_goto();
 }
 
 function token_autocomplete() {
@@ -333,8 +333,8 @@ function token_autocomplete_type($string = '') {
     ksort($matches);
   }
 
-  $matches = drupal_map_assoc(array_keys($matches));
-  drupal_json_output($matches);
+  $matches = backdrop_map_assoc(array_keys($matches));
+  backdrop_json_output($matches);
 }
 
 function token_autocomplete_token($token_type) {
@@ -346,7 +346,7 @@ function token_autocomplete_token($token_type) {
   $token_type = $token_type['type'];
   $matches = array();
 
-  if (!drupal_strlen($string)) {
+  if (!backdrop_strlen($string)) {
     $matches["[{$token_type}:"] = 0;
   }
   else {
@@ -364,6 +364,6 @@ function token_autocomplete_token($token_type) {
   }
 
   asort($matches);
-  $matches = drupal_map_assoc(array_keys($matches));
-  drupal_json_output($matches);
+  $matches = backdrop_map_assoc(array_keys($matches));
+  backdrop_json_output($matches);
 }

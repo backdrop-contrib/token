@@ -9,12 +9,13 @@
  * Implements hook_exit().
  */
 function token_test_exit() {
-  if ($debug = variable_get('token_page_tokens', array())) {
+  $config = config('token.settings');
+  if ($debug = $config->get('page_tokens')) {
     $debug += array('tokens' => array(), 'data' => array(), 'options' => array());
     foreach (array_keys($debug['tokens']) as $token) {
       $debug['values'][$token] = token_replace($token, $debug['data'], $debug['options']);
     }
-    variable_set('token_page_tokens', $debug);
+    $config->set('page_tokens', $debug);
   }
 }
 

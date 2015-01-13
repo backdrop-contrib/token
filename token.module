@@ -140,7 +140,7 @@ function token_admin_menu_output_alter(&$content) {
     '#title' => t('Token registry'),
     '#href' => 'token/flush-cache',
     '#options' => array(
-      'query' => drupal_get_destination() + array('token' => drupal_get_token('token/flush-cache')),
+      'query' => backdrop_get_destination() + array('token' => backdrop_get_token('token/flush-cache')),
     ),
   );
 }
@@ -197,10 +197,10 @@ function token_library() {
     'website' => 'http://plugins.jquery.com/project/treetable',
     'version' => '2.3.0',
     'js' => array(
-      drupal_get_path('module', 'token') . '/jquery.treeTable.js' => array(),
+      backdrop_get_path('module', 'token') . '/jquery.treeTable.js' => array(),
     ),
     'css' => array(
-      drupal_get_path('module', 'token') . '/jquery.treeTable.css' => array(),
+      backdrop_get_path('module', 'token') . '/jquery.treeTable.css' => array(),
     ),
   );
 
@@ -208,7 +208,7 @@ function token_library() {
     'title' => 'Token dialog',
     'version' => '1.0',
     'js' => array(
-      drupal_get_path('module', 'token') . '/token.js' => array(),
+      backdrop_get_path('module', 'token') . '/token.js' => array(),
     ),
     'dependencies' => array(
       array('system', 'ui.dialog'),
@@ -357,15 +357,15 @@ function token_clear_cache() {
   if (db_table_exists('cache_token')) {
     cache_clear_all('*', 'cache_token', TRUE);
   }
-  drupal_static_reset('token_get_info');
-  drupal_static_reset('token_get_global_token_types');
-  drupal_static_reset('token_get_entity_mapping');
-  drupal_static_reset('token_build_tree');
-  drupal_static_reset('_token_profile_fields');
-  drupal_static_reset('token_menu_link_load');
-  drupal_static_reset('token_book_link_load');
-  drupal_static_reset('token_node_menu_link_load');
-  drupal_static_reset('_token_field_info');
+  backdrop_static_reset('token_get_info');
+  backdrop_static_reset('token_get_global_token_types');
+  backdrop_static_reset('token_get_entity_mapping');
+  backdrop_static_reset('token_build_tree');
+  backdrop_static_reset('_token_profile_fields');
+  backdrop_static_reset('token_menu_link_load');
+  backdrop_static_reset('token_book_link_load');
+  backdrop_static_reset('token_node_menu_link_load');
+  backdrop_static_reset('_token_field_info');
 }
 
 /**
@@ -379,14 +379,14 @@ function token_clear_cache() {
  * @see http://drupal.org/node/737726
  */
 function token_get_entity_mapping($value_type = 'token', $value = NULL, $fallback = FALSE) {
-  $mapping = &drupal_static(__FUNCTION__, array());
+  $mapping = &backdrop_static(__FUNCTION__, array());
 
   if (empty($mapping)) {
     foreach (entity_get_info() as $entity_type => $info) {
       $mapping[$entity_type] = !empty($info['token type']) ? $info['token type'] : $entity_type;
     }
     // Allow modules to alter the mapping array.
-    drupal_alter('token_entity_mapping', $mapping);
+    backdrop_alter('token_entity_mapping', $mapping);
   }
 
   if (!isset($value)) {
@@ -496,17 +496,19 @@ function token_flush_caches() {
 function token_get_info($token_type = NULL, $token = NULL) {
   global $language;
 
-  // Use the advanced drupal_static() pattern, since this is called very often.
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['token_info'] = &drupal_static(__FUNCTION__);
+  $cache_token = cache('token');
+
+  // Use the advanced backdrop_static() pattern, since this is called very often.
+  static $backdrop_static_fast;
+  if (!isset($backdrop_static_fast)) {
+    $backdrop_static_fast['token_info'] = &backdrop_static(__FUNCTION__);
   }
-  $token_info = &$drupal_static_fast['token_info'];
+  $token_info = &$backdrop_static_fast['token_info'];
 
   if (empty($token_info)) {
     $cid = "info:{$language->language}";
 
-    if ($cache = cache_get($cid, 'cache_token')) {
+    if ($cache = $cache_token->get($cid)) {
       $token_info = $cache->data;
     }
     else {
@@ -536,7 +538,7 @@ function token_get_info($token_type = NULL, $token = NULL) {
       }
 
       // Store info in cache for future use.
-      cache_set($cid, $token_info, 'cache_token');
+      $cache_token->set($cid, $token_info);
     }
   }
 
@@ -582,7 +584,7 @@ function token_asort_tokens($token_a, $token_b) {
  *   An array of global token types.
  */
 function token_get_global_token_types() {
-  $global_types = &drupal_static(__FUNCTION__, array());
+  $global_types = &backdrop_static(__FUNCTION__, array());
 
   if (empty($global_types)) {
     $token_info = token_get_info();
@@ -703,7 +705,7 @@ function token_get_invalid_tokens($type, $tokens) {
 function token_element_validate(&$element, &$form_state) {
   $value = isset($element['#value']) ? $element['#value'] : $element['#default_value'];
 
-  if (!drupal_strlen($value)) {
+  if (!backdrop_strlen($value)) {
     // Empty value needs no further validation since the element should depend
     // on using the '#required' FAPI property.
     return $element;
@@ -879,8 +881,10 @@ function token_form_user_admin_settings_alter(&$form, &$form_state) {
 function token_build_tree($token_type, array $options = array()) {
   global $language;
 
+  $cache_token = cache('token');
+
   // Static cache of already built token trees.
-  $trees = &drupal_static(__FUNCTION__, array());
+  $trees = &backdrop_static(__FUNCTION__, array());
 
   $options += array(
     'restricted' => FALSE,
@@ -903,7 +907,7 @@ function token_build_tree($token_type, array $options = array()) {
   // If we do not have this base tree in the static cache, check {cache_token}
   // otherwise generate and store it in the cache.
   if (!isset($trees[$tree_cid])) {
-    if ($cache = cache_get($tree_cid, 'cache_token')) {
+    if ($cache = $cache_token->get($tree_cid)) {
       $trees[$tree_cid] = $cache->data;
     }
     else {
@@ -1032,7 +1036,7 @@ function _token_build_tree($token_type, array $options) {
  * @see _token_menu_link_translate()
  */
 function token_menu_link_load($mlid) {
-  $cache = &drupal_static(__FUNCTION__, array());
+  $cache = &backdrop_static(__FUNCTION__, array());
 
   if (!is_numeric($mlid)) {
     return FALSE;
@@ -1066,7 +1070,7 @@ function token_menu_link_load($mlid) {
  * @see _token_menu_link_translate()
  */
 function token_book_link_load($mlid) {
-  $cache = &drupal_static(__FUNCTION__, array());
+  $cache = &backdrop_static(__FUNCTION__, array());
 
   if (!is_numeric($mlid)) {
     return FALSE;
@@ -1122,7 +1126,7 @@ function _token_menu_link_translate(&$item) {
   // options array. For performance reasons we only invoke this hook if the link
   // has the 'alter' flag set in the options array.
   if (!empty($item['options']['alter'])) {
-    drupal_alter('translated_menu_link', $item, $map);
+    backdrop_alter('translated_menu_link', $item, $map);
   }
 
   return $map;
@@ -1177,19 +1181,18 @@ function token_render_array_value($value, array $options = array()) {
 }
 
 /**
- * Copy of drupal_render_cache_get() that does not care about request method.
+ * Copy of backdrop_render_cache_get() that does not care about request method.
  */
 function token_render_cache_get($elements) {
-  if (!$cid = drupal_render_cid_create($elements)) {
+  if (!$cid = backdrop_render_cid_create($elements)) {
     return FALSE;
   }
-  $bin = isset($elements['#cache']['bin']) ? $elements['#cache']['bin'] : 'cache';
 
-  if (!empty($cid) && $cache = cache_get($cid, $bin)) {
+  if (!empty($cid) && $cache = cache('token')->get($cid)) {
     // Add additional libraries, JavaScript, CSS and other data attached
     // to this element.
     if (isset($cache->data['#attached'])) {
-      drupal_process_attached($cache->data);
+      backdrop_process_attached($cache->data);
     }
     // Return the rendered output.
     return $cache->data['#markup'];
@@ -1198,22 +1201,22 @@ function token_render_cache_get($elements) {
 }
 
 /**
- * Coyp of drupal_render_cache_set() that does not care about request method.
+ * Coyp of backdrop_render_cache_set() that does not care about request method.
  */
 function token_render_cache_set(&$markup, $elements) {
-  // This should only run of drupal_render_cache_set() did not.
+  // This should only run of backdrop_render_cache_set() did not.
   if (in_array($_SERVER['REQUEST_METHOD'], array('GET', 'HEAD'))) {
     return FALSE;
   }
 
   $original_method = $_SERVER['REQUEST_METHOD'];
   $_SERVER['REQUEST_METHOD'] = 'GET';
-  drupal_render_cache_set($markup, $elements);
+  backdrop_render_cache_set($markup, $elements);
   $_SERVER['REQUEST_METHOD'] = $original_method;
 }
 
 function token_menu_link_load_all_parents($mlid) {
-  $cache = &drupal_static(__FUNCTION__, array());
+  $cache = &backdrop_static(__FUNCTION__, array());
 
   if (!is_numeric($mlid)) {
     return array();
@@ -1232,7 +1235,7 @@ function token_menu_link_load_all_parents($mlid) {
 }
 
 function token_taxonomy_term_load_all_parents($tid) {
-  $cache = &drupal_static(__FUNCTION__, array());
+  $cache = &backdrop_static(__FUNCTION__, array());
 
   if (!is_numeric($tid)) {
     return array();
@@ -1265,7 +1268,7 @@ function token_taxonomy_term_load_all_parents($tid) {
  * @see token_menu_link_load()
  */
 function token_node_menu_link_load($node) {
-  $cache = &drupal_static(__FUNCTIon__, array());
+  $cache = &backdrop_static(__FUNCTIon__, array());
 
   if (!isset($cache[$node->nid])) {
     $mlid = FALSE;
@@ -1286,4 +1289,15 @@ function token_node_menu_link_load($node) {
   }
 
   return $cache[$node->nid] ? token_menu_link_load($cache[$node->nid]) : FALSE;
+}
+
+/**
+ * Implements hook_config_info().
+ */
+function token_config_info() {
+  $prefixes['token.settings'] = array(
+    'label' => t('Token Settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
 }

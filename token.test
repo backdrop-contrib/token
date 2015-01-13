@@ -10,6 +10,7 @@
  */
 class TokenTestHelper extends DrupalWebTestCase {
   protected $profile = 'testing';
+  protected $config;
 
   public function setUp($modules = array()) {
     $modules[] = 'path';
@@ -17,7 +18,8 @@ class TokenTestHelper extends DrupalWebTestCase {
     $modules[] = 'token_test';
     parent::setUp($modules);
 
-    variable_set('clean_url', 1);
+    $this->config = config('token.settings');
+    $this->config->set('clean_url', 1);
   }
 
   function assertToken($type, array $data, $token, $expected, array $options = array()) {
@@ -92,12 +94,13 @@ class TokenTestHelper extends DrupalWebTestCase {
       'data' => $data,
       'options' => $options,
     );
-    variable_set('token_page_tokens', $token_page_tokens);
+
+    $this->config->set('page_tokens', $token_page_tokens);
 
     $options += array('url_options' => array());
     $this->drupalGet($url, $options['url_options']);
     $this->refreshVariables();
-    $result = variable_get('token_page_tokens', array());
+    $result = $this->config->get('page_tokens');
 
     if (!isset($result['values']) || !is_array($result['values'])) {
       return $this->fail('Failed to generate tokens.');
@@ -118,14 +121,6 @@ class TokenTestHelper extends DrupalWebTestCase {
 }
 
 class TokenUnitTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Token unit tests',
-      'description' => 'Test basic, low-level token functions.',
-      'group' => 'Token',
-    );
-  }
-
   /**
    * Test token_get_invalid_tokens() and token_get_invalid_tokens_by_context().
    */
@@ -202,13 +197,6 @@ class TokenUnitTestCase extends TokenTestHelper {
 }
 
 class TokenURLTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'URL token tests',
-      'description' => 'Test the URL tokens.',
-      'group' => 'Token',
-    );
-  }
 
   public function setUp($modules = array()) {
     parent::setUp($modules);
@@ -239,13 +227,6 @@ class TokenURLTestCase extends TokenTestHelper {
 }
 
 class TokenCommentTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Comment token tests',
-      'description' => 'Test the comment tokens.',
-      'group' => 'Token',
-    );
-  }
 
   public function setUp($modules = array()) {
     $modules[] = 'comment';
@@ -302,14 +283,6 @@ class TokenCommentTestCase extends TokenTestHelper {
 class TokenNodeTestCase extends TokenTestHelper {
   protected $profile = 'standard';
 
-  public static function getInfo() {
-    return array(
-      'name' => 'Node and content type token tests',
-      'description' => 'Test the node and content type tokens.',
-      'group' => 'Token',
-    );
-  }
-
   function testNodeTokens() {
     $source_node = $this->drupalCreateNode(array('log' => $this->randomName(), 'path' => array('alias' => 'content/source-node')));
     $tokens = array(
@@ -360,13 +333,6 @@ class TokenNodeTestCase extends TokenTestHelper {
 }
 
 class TokenMenuTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Menu link and menu token tests',
-      'description' => 'Test the menu tokens.',
-      'group' => 'Token',
-    );
-  }
 
   public function setUp($modules = array()) {
     $modules[] = 'menu';
@@ -465,14 +431,6 @@ class TokenMenuTestCase extends TokenTestHelper {
 class TokenTaxonomyTestCase extends TokenTestHelper {
   protected $vocab;
 
-  public static function getInfo() {
-    return array(
-      'name' => 'Taxonomy and vocabulary token tests',
-      'description' => 'Test the taxonomy tokens.',
-      'group' => 'Token',
-    );
-  }
-
   public function setUp($modules = array()) {
     $modules[] = 'taxonomy';
     parent::setUp($modules);
@@ -569,24 +527,19 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
 
 class TokenUserTestCase extends TokenTestHelper {
   protected $account = NULL;
+  protected $config;
 
-  public static function getInfo() {
-    return array(
-      'name' => 'User token tests',
-      'description' => 'Test the user tokens.',
-      'group' => 'Token',
-    );
-  }
 
   public function setUp($modules = array()) {
     parent::setUp($modules);
+    $this->config = config('token.settings');
 
     // Enable user pictures.
-    variable_set('user_pictures', 1);
-    variable_set('user_picture_file_size', '');
+    $this->config->set('user_pictures', 1);
+    $this->config->set('user_picture_file_size', '');
 
     // Set up the pictures directory.
-    $picture_path = file_default_scheme() . '://' . variable_get('user_picture_path', 'pictures');
+    $picture_path = file_default_scheme() . '://' . $this->config->get('user_picture_path', 'pictures');
     if (!file_prepare_directory($picture_path, FILE_CREATE_DIRECTORY)) {
       $this->fail('Could not create directory ' . $picture_path . '.');
     }
@@ -628,7 +581,7 @@ class TokenUserTestCase extends TokenTestHelper {
       'picture:fid' => NULL,
       'ip-address' => NULL,
       'roles' => 'authenticated user',
-      'roles:keys' => (string) DRUPAL_AUTHENTICATED_RID,
+      'roles:keys' => (string) BACKDROP_AUTHENTICATED_ROLE,
     );
     $this->assertTokens('user', array('user' => $this->account), $user_tokens);
 
@@ -640,23 +593,16 @@ class TokenUserTestCase extends TokenTestHelper {
 
     $anonymous = drupal_anonymous_user();
     // Mess with the role array to ensure we still get consistent output.
-    $anonymous->roles[DRUPAL_ANONYMOUS_RID] = DRUPAL_ANONYMOUS_RID;
+    $anonymous->roles[BACKDROP_ANONYMOUS_ROLE] = BACKDROP_ANONYMOUS_ROLE;
     $tokens = array(
       'roles' => 'anonymous user',
-      'roles:keys' => (string) DRUPAL_ANONYMOUS_RID,
+      'roles:keys' => (string) BACKDROP_ANONYMOUS_ROLE,
     );
     $this->assertTokens('user', array('user' => $anonymous), $tokens);
   }
 }
 
 class TokenEntityTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Entity token tests',
-      'description' => 'Test the entity tokens.',
-      'group' => 'Token',
-    );
-  }
 
   public function setUp($modules = array()) {
     $modules[] = 'taxonomy';
@@ -736,14 +682,6 @@ class TokenEntityTestCase extends TokenTestHelper {
 class TokenProfileTestCase extends TokenTestHelper {
   private $account;
 
-  public static function getInfo() {
-    return array(
-      'name' => 'Profile token tests',
-      'description' => 'Test the profile tokens.',
-      'group' => 'Token',
-    );
-  }
-
   public function setUp($modules = array()) {
     $modules[] = 'profile';
     parent::setUp($modules);
@@ -775,7 +713,7 @@ class TokenProfileTestCase extends TokenTestHelper {
       'profile_textarea' => "First paragraph.\n\nSecond paragraph.",
       'profile_checkbox' => TRUE,
       'profile_selection' => 'Red',
-      'profile_list' => ' Drupal ,  Joomla ',
+      'profile_list' => ' Backdrop ,  Joomla ',
       'profile_url' => 'http://www.example.com/',
       'profile_date[month]' => 5,
       'profile_date[day]' => 20,
@@ -854,17 +792,13 @@ class TokenProfileTestCase extends TokenTestHelper {
  * Test the current page tokens.
  */
 class TokenCurrentPageTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Current page token tests',
-      'description' => 'Test the [current-page:*] tokens.',
-      'group' => 'Token',
-    );
-  }
+  protected $config;
 
   function testCurrentPageTokens() {
+    $this->config = config('token.settings');
+
     $tokens = array(
-      '[current-page:title]' => t('Welcome to @site-name', array('@site-name' => variable_get('site_name', 'Drupal'))),
+      '[current-page:title]' => t('Welcome to @site-name', array('@site-name' => $this->config->get('site_name'))),
       '[current-page:url]' => url('node', array('absolute' => TRUE)),
       '[current-page:url:absolute]' => url('node', array('absolute' => TRUE)),
       '[current-page:url:relative]' => url('node', array('absolute' => FALSE)),
@@ -909,13 +843,6 @@ class TokenCurrentPageTestCase extends TokenTestHelper {
 }
 
 class TokenArrayTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Array token tests',
-      'description' => 'Test the array tokens.',
-      'group' => 'Token',
-    );
-  }
 
   function testArrayTokens() {
     // Test a simple array.
@@ -968,13 +895,6 @@ class TokenArrayTestCase extends TokenTestHelper {
 }
 
 class TokenRandomTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Random token tests',
-      'description' => 'Test the random tokens.',
-      'group' => 'Token',
-    );
-  }
 
   function testRandomTokens() {
     $tokens = array(
@@ -997,13 +917,6 @@ class TokenRandomTestCase extends TokenTestHelper {
  * @todo Remove when http://drupal.org/node/1173706 is fixed.
  */
 class TokenDateTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Date token tests',
-      'description' => 'Test the date tokens.',
-      'group' => 'Token',
-    );
-  }
 
   function testDateTokens() {
     $tokens = array(
@@ -1016,13 +929,6 @@ class TokenDateTestCase extends TokenTestHelper {
 }
 
 class TokenFileTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'File token tests',
-      'description' => 'Test the file tokens.',
-      'group' => 'Token',
-    );
-  }
 
   function testFileTokens() {
     // Create a test file object.
@@ -1054,15 +960,10 @@ class TokenFileTestCase extends TokenTestHelper {
 }
 
 class TokenBlockTestCase extends TokenTestHelper {
-  public static function getInfo() {
-    return array(
-      'name' => 'Block token tests',
-      'description' => 'Test the block title token replacement.',
-      'group' => 'Token',
-    );
-  }
+  protected $config;
 
   public function setUp($modules = array()) {
+    $this->config = config('token.settings');
     $modules[] = 'block';
     parent::setUp($modules);
 
@@ -1084,7 +985,7 @@ class TokenBlockTestCase extends TokenTestHelper {
     $this->drupalPost(NULL, $edit, 'Save block');
 
     $this->drupalGet('node');
-    $this->assertText('Welcome to ' . variable_get('site_name', 'Drupal') . ' block title');
+    $this->assertText('Welcome to ' . $this->config->get('site_name') . ' block title');
 
     // Ensure that tokens are not double-escaped when output as a block title.
     $node = $this->drupalCreateNode(array('title' => "Site's first node"));
