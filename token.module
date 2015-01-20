@@ -494,7 +494,7 @@ function token_flush_caches() {
  * @see hook_token_info_alter()
  */
 function token_get_info($token_type = NULL, $token = NULL) {
-  global $language;
+  global $language_content;
 
   $cache_token = cache('token');
 
@@ -506,7 +506,8 @@ function token_get_info($token_type = NULL, $token = NULL) {
   $token_info = &$backdrop_static_fast['token_info'];
 
   if (empty($token_info)) {
-    $cid = "info:{$language->language}";
+
+    $cid = "info:{$language_content->langcode}";
 
     if ($cache = $cache_token->get($cid)) {
       $token_info = $cache->data;
@@ -879,7 +880,7 @@ function token_form_user_admin_settings_alter(&$form, &$form_state) {
  *   An optional array with the current parents of the tokens.
  */
 function token_build_tree($token_type, array $options = array()) {
-  global $language;
+  global $language_content;
 
   $cache_token = cache('token');
 
@@ -902,7 +903,7 @@ function token_build_tree($token_type, array $options = array()) {
     $token_type = $entity_token_type;
   }
 
-  $tree_cid = "tree:{$token_type}:{$language->language}:{$options['depth']}";
+  $tree_cid = "tree:{$token_type}:{$language_content->langcode}:{$options['depth']}";
 
   // If we do not have this base tree in the static cache, check {cache_token}
   // otherwise generate and store it in the cache.
@@ -913,7 +914,7 @@ function token_build_tree($token_type, array $options = array()) {
     else {
       $options['parents'] = array();
       $trees[$tree_cid] = _token_build_tree($token_type, $options);
-      cache_set($tree_cid, $trees[$tree_cid], 'cache_token');
+      _update_cache_set($tree_cid, $trees[$tree_cid], CACHE_PERMANENT);
     }
   }
 

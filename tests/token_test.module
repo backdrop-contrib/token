@@ -17,6 +17,7 @@ function token_test_exit() {
     }
     $config->set('page_tokens', $debug);
   }
+  $config->save();
 }
 
 /**
