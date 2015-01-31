@@ -1,15 +1,45 @@
-Implementation of Token(git commit: 49db17816243441544fa09847276e626b02ba4e6) to [Backdrop](backdropcms.org) CMS
+Token
+=====
 
-#Usage
+Backdrop core includes the ability to replace small snippets of text with
+dynamic replacements. These replaceable snippets are called "tokens", and
+can usually be identified by a word surrounded by square brackets, such as
+`[node:nid]`. Although core provides the token replacement mechanism, it does
+not include a UI for browsing tokens, nor tokens for a lot of its own core
+modules. This project provides the missing tokens for core, and adds a UI.
 
-Go to modules/contrib in your Backdrop CMS installation and clone this project
+*Important note*: This project is targeted for inclusion in Backdrop 1.1.0, due
+May 15, 2015. It is likely that after upgrading to Backdrop 1.1.0, you will no
+longer need this module.
 
-```
-git clone git@github.com:backdrop-contrib/token.git token
-```
+Installation
+------------
 
-Enable the module accessing page **http://example.com/admin/modules/list
+- Install this module using the official Backdrop CMS instructions at
+  https://backdropcms.org/guide/modules
 
-#Issues
+- This module has no settings page, though it does modify a number of forms
+  throughout core to include a link to the token browser.
 
-This is an implementation in progress, please report any issue you found, if you want more information about how to migrate a module from Drupal 7 to Backdrop check the post <a href="http://enzolutions.com/articles/2014/12/29/backdrop-cms-first-impressions/">Backdrop CMS First impressions</a>
+License
+-------
+
+This project is GPL v2 software. See the LICENSE.txt file in this directory for
+complete text.
+
+Current Maintainers
+-------------------
+
+- Eduardo Garcia (https://github.com/enzolutions/)
+- Nate Haug (https://github.com/quicksketch/)
+
+Credits
+-------
+
+Ported by Backdrop by Eduardo Garcia.
+
+This module was originally written and maintained for Drupal by:
+
+- Dave Reid (https://www.drupal.org/u/dave-reid)
+- Greg Knaddison (https://www.drupal.org/u/greggles)
+- Jeff Eaton (https://www.drupal.org/u/eaton)
