@@ -14,8 +14,8 @@ function theme_token_tree_link($variables) {
   }
 
   if (!empty($variables['dialog'])) {
-    backdrop_add_library('token', 'dialog');
-    $variables['options']['attributes']['class'][] = 'token-dialog';
+    backdrop_add_library('system', 'backdrop.ajax');
+    $variables['options']['attributes']['class'][] = 'use-ajax';
   }
 
   $info = token_theme();
@@ -57,14 +57,29 @@ function token_page_output_tree() {
     return MENU_ACCESS_DENIED;
   }
 
-  // Force the dialog option to be false so we're not creating a dialog within
-  // a dialog.
-  $options['dialog'] = FALSE;
-
-  $output = theme('token_tree', $options);
-  print '<html><head>' . backdrop_get_css() . backdrop_get_js() . '</head>';
-  print '<body class="token-tree">' . $output . '</body></html>';
-  backdrop_exit();
+  // Return as a renderable so the Backdrop dialog system can use the title.
+  $tree = '<div>' . theme('token_tree', $options) . '</div>';
+  if (backdrop_is_ajax()) {
+    $dialog_options = array(
+      'dialogClass' => 'token-dialog',
+      'modal' => FALSE,
+      'draggable' => TRUE,
+      'resizeable' => TRUE,
+      'autoResize' => FALSE,
+      'width' => '50%',
+      'height' => '600',
+    );
+    $commands = array();
+    $commands[] = ajax_command_open_dialog('#token-dialog', t('Available tokens'), $tree, $dialog_options);
+    $return = array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+    return $return;
+  }
+  else {
+    return $tree;
+  }
 }
 
 /**
@@ -75,14 +90,19 @@ function token_page_output_tree() {
 function theme_tree_table($variables) {
   foreach ($variables['rows'] as &$row) {
     $row += array('class' => array());
+    if (!empty($row['id'])) {
+      $row['data-tt-id'] = $row['id'];
+      $row['no_striping'] = TRUE;
+      unset($row['id']);
+    }
     if (!empty($row['parent'])) {
-      $row['class'][] = 'child-of-' . $row['parent'];
+      $row['data-tt-parent-id'] = $row['parent'];
       unset($row['parent']);
     }
   }
 
   if (!empty($variables['rows'])) {
-    backdrop_add_library('token', 'treeTable');
+    backdrop_add_library('token', 'jquery.treetable');
   }
 
   return theme('table', $variables);
@@ -94,10 +114,6 @@ function theme_tree_table($variables) {
  * @ingroup themeable
  */
 function theme_token_tree($variables) {
-  if (!empty($variables['dialog'])) {
-    return theme_token_tree_link($variables);
-  }
-
   $token_types = $variables['token_types'];
   $info = token_get_info();
 
@@ -106,16 +122,6 @@ function theme_token_tree($variables) {
   }
   elseif ($variables['global_types']) {
     $token_types = array_merge($token_types, token_get_global_token_types());
-  }
-
-  $element = array(
-    '#cache' => array(
-      'cid' => 'tree-rendered:' . hash('sha256', serialize(array('token_types' => $token_types, 'global_types' => NULL) + $variables)),
-      'bin' => 'cache_token',
-    ),
-  );
-  if ($cached_output = token_render_cache_get($element)) {
-    return $cached_output;
   }
 
   $options = array(
@@ -151,30 +157,23 @@ function theme_token_tree($variables) {
     }
   }
 
-  $element += array(
-    '#theme' => 'tree_table',
-    '#header' => array(
+  $table_variables = array(
+    'header' => array(
       t('Name'),
       t('Token'),
-      t('Description'),
     ),
-    '#rows' => $rows,
-    '#attributes' => array('class' => array('token-tree')),
-    '#empty' => t('No tokens available'),
-    '#attached' => array(
-      'js' => array(backdrop_get_path('module', 'token') . '/token.js'),
-      'css' => array(backdrop_get_path('module', 'token') . '/token.css'),
-      'library' => array(array('token', 'treeTable')),
-    ),
+    'rows' => $rows,
+    'attributes' => array('class' => array('token-tree')),
+    'empty' => t('No tokens available'),
   );
 
   if ($variables['click_insert']) {
-    $element['#caption'] = t('Click a token to insert it into the field you\'ve last clicked.');
-    $element['#attributes']['class'][] = 'token-click-insert';
+    $table_variables['caption'] = t('Select a token to insert it into the current field.');
+    $table_variables['attributes']['class'][] = 'token-click-insert';
   }
 
-  $output = backdrop_render($element);
-  token_render_cache_set($output, $element);
+  backdrop_add_library('token', 'token');
+  $output = theme('tree_table', $table_variables);
   return $output;
 }
 
@@ -192,45 +191,32 @@ function _token_token_tree_format_row($token, array $token_info, $is_group = FAL
       'name' => '',
       'token' => '',
       'value' => '',
-      'description' => '',
     ),
   );
 
   $row = $defaults;
-  $row['id'] = _token_clean_css_identifier($token);
-  $row['data']['name'] = $token_info['name'];
-  $row['data']['description'] = $token_info['description'];
+  $row['id'] = backdrop_clean_css_identifier($token);
+  $row['data']['name']['data'] = $token_info['name'];
+  $row['data']['name']['class'][] = 'token-name';
 
   if ($is_group) {
     // This is a token type/group.
     $row['class'][] = 'token-group';
+    $row['data']['token']['data'] = '<span class="token-group-description">' . $token_info['description'] . '</span>';
   }
   else {
     // This is a token.
-    $row['data']['token']['data'] = $token;
-    $row['data']['token']['class'][] = 'token-key';
+    $row['data']['token']['data'] = '<span class="token-key">' . $token . '</span>';
     if (isset($token_info['value'])) {
       $row['data']['value'] = $token_info['value'];
     }
     if (!empty($token_info['parent'])) {
-      $row['parent'] = _token_clean_css_identifier($token_info['parent']);
+      $row['parent'] = backdrop_clean_css_identifier($token_info['parent']);
     }
+    $row['data']['token']['data'] .= '<span class="token-description">' . $token_info['description'] . '</span>';
   }
 
   return $row;
-}
-
-/**
- * Wrapper function for backdrop_clean_css_identifier() for use with tokens.
- *
- * This trims any brackets from the token and also cleans the colon character
- * to a hyphen.
- *
- * @see backdrop_clean_css_identifier()
- */
-function _token_clean_css_identifier($id) {
-  static $replacements = array(' ' => '-', '_' => '-', '/' => '-', '[' => '-', ']' => '', ':' => '--', '?' => '', '<' => '-', '>' => '-');
-  return 'token-' . rtrim(strtr(trim($id, '[]'), $replacements), '-');
 }
 
 /**
@@ -260,7 +246,6 @@ function token_devel_token_object($entity_type, $entity, $token_type = NULL) {
       continue;
     }
     $row = _token_token_tree_format_row($token, $token_info);
-    unset($row['data']['description']);
     unset($row['data']['name']);
     $rows[] = $row;
   }

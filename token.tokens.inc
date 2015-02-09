@@ -492,7 +492,7 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
           break;
 
         case 'root':
-          $parents = taxonomy_get_parents_all($term->tid);
+          $parents = taxonomy_term_load_parents_all($term->tid);
           $root_term = end($parents);
           if ($root_term->tid != $term->tid) {
             $replacements[$original] = $sanitize ? check_plain($root_term->name) : $root_term->name;
@@ -512,7 +512,7 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
       }
     }
     if ($root_tokens = token_find_with_prefix($tokens, 'root')) {
-      $parents = taxonomy_get_parents_all($term->tid);
+      $parents = taxonomy_term_load_parents_all($term->tid);
       $root_term = end($parents);
       if ($root_term->tid != $term->tid) {
         $replacements += token_generate('term', $root_tokens, array('term' => $root_term), $options);
@@ -526,6 +526,10 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
 
     foreach ($tokens as $name => $original) {
       switch ($name) {
+        case 'name':
+          // This is a machine name so does not ever need to be sanitized.
+          $replacements[$original] = $vocabulary->name;
+          break;
         case 'machine-name':
           // This is a machine name so does not ever need to be sanitized.
           $replacements[$original] = $vocabulary->machine_name;
@@ -771,12 +775,6 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
   if (!empty($data[$type]) && $entity_type = token_get_entity_mapping('token', $type)) {
     $entity = $data[$type];
 
-    // Sometimes taxonomy terms are not properly loaded.
-    // @see http://drupal.org/node/870528
-    if ($entity_type == 'taxonomy_term' && !isset($entity->vocabulary_machine_name)) {
-      $entity->vocabulary_machine_name = db_query("SELECT machine_name FROM {taxonomy_vocabulary} WHERE vid = :vid", array(':vid' => $entity->vid))->fetchField();
-    }
-
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'url':
@@ -818,8 +816,16 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
   if ($type == 'array' && !empty($data['array']) && is_array($data['array'])) {
     $array = $data['array'];
 
-    $sort = isset($options['array sort']) ? $options['array sort'] : TRUE;
-    $keys = element_children($array, $sort);
+    if (isset($options['array sort']) ? $options['array sort'] : FALSE) {
+      backdrop_sort($array, array('#weight' => SORT_NUMERIC));
+    };
+    $keys = array();
+    foreach ($array as $key => $value) {
+      if ($key[0] !== '#') {
+        $keys[] = $key;
+      }
+    }
+
 
     foreach ($tokens as $name => $original) {
       switch ($name) {
@@ -867,12 +873,13 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
 
     // [array:keys:*] chained tokens.
     if ($key_tokens = token_find_with_prefix($tokens, 'keys')) {
+      $options['array sort'] = FALSE;
       $replacements += token_generate('array', $key_tokens, array('array' => $keys), $options);
     }
 
     // [array:reversed:*] chained tokens.
     if ($reversed_tokens = token_find_with_prefix($tokens, 'reversed')) {
-      $replacements += token_generate('array', $reversed_tokens, array('array' => array_reverse($array, TRUE)), array('array sort' => FALSE) + $options);
+      $replacements += token_generate('array', $reversed_tokens, array('array' => array_reverse($array, TRUE)) + $options);
     }
 
     // @todo Handle if the array values are not strings and could be chained.
@@ -982,7 +989,7 @@ function token_tokens_alter(array &$replacements, array $context) {
           // http://drupal.org/node/978028 was fixed in core release 7.7.
           if (version_compare(VERSION, '7.7', '<')) {
             $account = user_load($file->uid);
-            $name = format_username($account);
+            $name = user_format_name($account);
             $replacements[$original] = $sanitize ? check_plain($name) : $name;
           }
           break;
@@ -1177,109 +1184,6 @@ function menu_tokens($type, $tokens, array $data = array(), array $options = arr
   }
 
   return $replacements;
-}
-
-/**
- * Implements hook_token_info() on behalf of profile.module.
- */
-function profile_token_info() {
-  $info = array();
-
-  foreach (_token_profile_fields() as $field) {
-    $info['tokens']['user'][$field->token_name] = array(
-      'name' => check_plain($field->title),
-      'description' => t('@category @type field.', array('@category' => backdrop_ucfirst($field->category), '@type' => $field->type)),
-    );
-
-    switch ($field->type) {
-      case 'date':
-        $info['tokens']['user'][$field->token_name]['type'] = 'date';
-        break;
-    }
-  }
-
-  return $info;
-}
-
-/**
- * Implements hook_tokens() on behalf of profile.module.
- */
-function profile_tokens($type, $tokens, array $data = array(), array $options = array()) {
-  $replacements = array();
-  $sanitize = !empty($options['sanitize']);
-  $language_code = isset($options['language']) ? $options['language']->language : NULL;
-
-  if ($type == 'user' && !empty($data['user'])) {
-    $account = $data['user'];
-
-    // Load profile fields if this is the global user account.
-    // @see http://drupal.org/node/361471
-    // @see http://drupal.org/node/967330
-    if ($account->uid == $GLOBALS['user']->uid && isset($account->timestamp)) {
-      $profile_users = array($account->uid => $account);
-      profile_user_load($profile_users);
-      $account = $profile_users[$account->uid];
-    }
-
-    $profile_fields = _token_profile_fields();
-    foreach ($tokens as $name => $original) {
-      if (isset($profile_fields[$name]) && !empty($account->{$profile_fields[$name]->name})) {
-        $value = $account->{$profile_fields[$name]->name};
-        switch ($profile_fields[$name]->type) {
-          case 'textarea':
-            $replacements[$original] = $sanitize ? check_markup($value, filter_default_format($account), '', TRUE) : $value;
-            break;
-          case 'date':
-            $timestamp = gmmktime(0, 0, 0, $value['month'], $value['day'], $value['year']);
-            $replacements[$original] = format_date($timestamp, 'medium', '', NULL, $language_code);
-            break;
-          case 'url':
-            $replacements[$original] = $sanitize ? check_url($value) : $value;
-            break;
-          case 'checkbox':
-            // Checkbox field if checked should return the text.
-            $replacements[$original] = $sanitize ? check_plain($profile_fields[$name]->title) : $profile_fields[$name]->title;
-            break;
-          case 'list':
-            $value = preg_split("/[,\n\r]/", $value);
-            $value = array_map('trim', $value);
-            $value = implode(', ', $value);
-            // Intentionally fall through to the default condition.
-          default:
-            $replacements[$original] = $sanitize ? check_plain($value) : $value;
-            break;
-        }
-      }
-    }
-
-    // Chained token relationships.
-    foreach ($profile_fields as $field) {
-      if ($field->type == 'date' && isset($account->{$field->name}) && $field_tokens = token_find_with_prefix($tokens, $field->token_name)) {
-        $date = $account->{$field->name};
-        $replacements += token_generate('date', $field_tokens, array('date' => gmmktime(0, 0, 0, $date['month'], $date['day'], $date['year'])), $options);
-      }
-    }
-  }
-
-  return $replacements;
-}
-
-/**
- * Fetch an array of profile field objects, keyed by token name.
- */
-function _token_profile_fields() {
-  $fields = &backdrop_static(__FUNCTION__);
-
-  if (!isset($fields)) {
-    $fields = array();
-    $results = db_query("SELECT name, title, category, type FROM {profile_field}");
-    foreach ($results as $field) {
-      $field->token_name = token_clean_token_name($field->name);
-      $fields[$field->token_name] = $field;
-    }
-  }
-
-  return $fields;
 }
 
 /**

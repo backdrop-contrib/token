@@ -1,85 +1,76 @@
-
+/**
+ * JavaScript behaviors for the display of the Token UI.
+ */
 (function ($) {
+
+"use strict";
 
 Backdrop.behaviors.tokenTree = {
   attach: function (context, settings) {
-    $('table.token-tree', context).once('token-tree', function () {
-      $(this).treeTable();
+    $(context).find('table.token-tree').once('token-tree', function () {
+      $(this).treetable({
+        'expandable': true
+      });
     });
   }
 };
 
-Backdrop.behaviors.tokenDialog = {
-  attach: function (context, settings) {
-    $('a.token-dialog', context).once('token-dialog').click(function() {
-      var url = $(this).attr('href');
-      var dialog = $('<div style="display: none" class="loading">' + Backdrop.t('Loading token browser...') + '</div>').appendTo('body');
-
-      // Emulate the AJAX data sent normally so that we get the same theme.
-      var data = {};
-      data['ajax_page_state[theme]'] = Backdrop.settings.ajaxPageState.theme;
-      data['ajax_page_state[theme_token]'] = Backdrop.settings.ajaxPageState.theme_token;
-
-      dialog.dialog({
-        title: $(this).attr('title') || Backdrop.t('Available tokens'),
-        width: 700,
-        close: function(event, ui) {
-          dialog.remove();
-        }
-      });
-      // Load the token tree using AJAX.
-      dialog.load(
-        url,
-        data,
-        function (responseText, textStatus, XMLHttpRequest) {
-          dialog.removeClass('loading');
-        }
-      );
-      // Prevent browser from following the link.
-      return false;
-    });
-  }
-}
-
 Backdrop.behaviors.tokenInsert = {
   attach: function (context, settings) {
     // Keep track of which textfield was last selected/focused.
-    $('textarea, input[type="text"]', context).focus(function() {
+    $(context).find('textarea, input[type="text"]').focus(function() {
       Backdrop.settings.tokenFocusedField = this;
     });
 
-    $('.token-click-insert .token-key', context).once('token-click-insert', function() {
+    $(context).find('.token-click-insert .token-key').once('token-click-insert', function() {
       var newThis = $('<a href="javascript:void(0);" title="' + Backdrop.t('Insert this token into your form') + '">' + $(this).html() + '</a>').click(function(){
         if (typeof Backdrop.settings.tokenFocusedField == 'undefined') {
-          alert(Backdrop.t('First click a text field to insert your tokens into.'));
+          alert(Backdrop.t('First click a text field into which the token should be inserted.'));
         }
         else {
           var myField = Backdrop.settings.tokenFocusedField;
           var myValue = $(this).text();
 
-          //IE support
+          // IE support.
           if (document.selection) {
             myField.focus();
-            sel = document.selection.createRange();
+            var sel = document.selection.createRange();
             sel.text = myValue;
           }
-
-          //MOZILLA/NETSCAPE support
+          // Mozilla/Webkit.
           else if (myField.selectionStart || myField.selectionStart == '0') {
             var startPos = myField.selectionStart;
             var endPos = myField.selectionEnd;
             myField.value = myField.value.substring(0, startPos)
                           + myValue
                           + myField.value.substring(endPos, myField.value.length);
-          } else {
+          }
+          // Otherwise just tack to the end.
+          else {
             myField.value += myValue;
           }
-
-          $('html,body').animate({scrollTop: $(myField).offset().top}, 500);
         }
         return false;
       });
       $(this).html(newThis);
+    });
+
+    var more = '&rtrif; ' + Backdrop.t('more');
+    var less = '&dtrif; ' + Backdrop.t('less');
+    var $link = $('<a class="token-more" href="#">' + more + ' </a>');
+    var toggleDescription = function() {
+      if ($(this).toggleClass('open').hasClass('open')) {
+        $(this).html(less).siblings('.token-description').css('display', 'block');
+      }
+      else {
+        $(this).html(more).siblings('.token-description').css('display', 'none');
+      }
+      return false;
+    }
+    $(context).find('.token-description').each(function() {
+      var $moreLink = $link.clone();
+      $moreLink.click(toggleDescription);
+      $(this).css('display', 'none').before(' ').before($moreLink);
     });
   }
 };

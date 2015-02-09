@@ -1,16 +1,30 @@
 
 .token-tree {
   font-size: 0.85em;
-  margin-left: 19px;
 }
 
-.ui-dialog-content .token-tree {
+.token-dialog {
+  max-width: none !important;
+}
+
+.token-dialog .token-tree {
   margin-left: 0;
 }
 
-.token-tree td, .token-tree th {
+.token-tree td,
+.token-tree th {
   padding-top: 0;
   padding-bottom: 0;
+  vertical-align: top;
+}
+.token-tree .token-name {
+  width: 30%;
+}
+.token-more {
+  float:right;
+}
+.token-description {
+  color: #666;
 }
 
 .token-group {

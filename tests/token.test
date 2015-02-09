@@ -8,7 +8,7 @@
 /**
  * Helper test class with some added functions for testing.
  */
-class TokenTestHelper extends DrupalWebTestCase {
+class TokenTestHelper extends BackdropWebTestCase {
   protected $profile = 'testing';
   protected $config;
 
@@ -63,7 +63,6 @@ class TokenTestHelper extends DrupalWebTestCase {
       $token = $input[$name];
       $this->assertTrue(!isset($replacements[$token]), t("Token value for @token was not generated.", array('@type' => $type, '@token' => $token)));
     }
-    return $values;
   }
 
   function saveAlias($source, $alias, $language = LANGUAGE_NONE) {
@@ -95,12 +94,11 @@ class TokenTestHelper extends DrupalWebTestCase {
       'options' => $options,
     );
 
-    $this->config->set('page_tokens', $token_page_tokens);
+    state_set('page_tokens', $token_page_tokens);
 
     $options += array('url_options' => array());
-    $this->drupalGet($url, $options['url_options']);
-    $this->refreshVariables();
-    $result = $this->config->get('page_tokens');
+    $this->backdropGet($url, $options['url_options']);
+    $result = state_get('page_tokens', array());
 
     if (!isset($result['values']) || !is_array($result['values'])) {
       return $this->fail('Failed to generate tokens.');
@@ -234,9 +232,9 @@ class TokenCommentTestCase extends TokenTestHelper {
   }
 
   function testCommentTokens() {
-    $node = $this->drupalCreateNode(array('comment' => COMMENT_NODE_OPEN));
+    $node = $this->backdropCreateNode(array('comment' => COMMENT_NODE_OPEN));
 
-    $parent_comment = new stdClass;
+    $parent_comment = new Comment();
     $parent_comment->nid = $node->nid;
     $parent_comment->pid = 0;
     $parent_comment->cid = NULL;
@@ -258,7 +256,7 @@ class TokenCommentTestCase extends TokenTestHelper {
     );
     $this->assertTokens('comment', array('comment' => $parent_comment), $tokens);
 
-    $comment = new stdClass();
+    $comment = new Comment();
     $comment->nid = $node->nid;
     $comment->pid = $parent_comment->cid;
     $comment->cid = NULL;
@@ -284,7 +282,7 @@ class TokenNodeTestCase extends TokenTestHelper {
   protected $profile = 'standard';
 
   function testNodeTokens() {
-    $source_node = $this->drupalCreateNode(array('log' => $this->randomName(), 'path' => array('alias' => 'content/source-node')));
+    $source_node = $this->backdropCreateNode(array('log' => $this->randomName(), 'path' => array('alias' => 'content/source-node')));
     $tokens = array(
       'source' => NULL,
       'source:nid' => NULL,
@@ -307,7 +305,7 @@ class TokenNodeTestCase extends TokenTestHelper {
     );
     $this->assertTokens('node', array('node' => $source_node), $tokens);
 
-    $translated_node = $this->drupalCreateNode(array('tnid' => $source_node->nid, 'type' => 'article'));
+    $translated_node = $this->backdropCreateNode(array('tnid' => $source_node->nid, 'type' => 'article'));
     $tokens = array(
       'source' => $source_node->title,
       'source:nid' => $source_node->nid,
@@ -361,11 +359,11 @@ class TokenMenuTestCase extends TokenTestHelper {
     $tokens = array(
       'mlid' => $parent_link['mlid'],
       'title' => 'Parent link',
-      'menu' => 'Main menu',
-      'menu:name' => 'Main menu',
+      'menu' => 'Primary navigation',
+      'menu:name' => 'Primary navigation',
       'menu:machine-name' => 'main-menu',
-      'menu:description' => 'The <em>Main</em> menu is used on many sites to show the major sections of the site, often in a top navigation bar.',
-      'menu:menu-link-count' => 2,
+      'menu:description' => 'The <em>Primary navigation</em> menu is used on many sites to show the major sections of the site, often in a top navigation bar.',
+      'menu:menu-link-count' => 10,
       'menu:edit-url' => url("admin/structure/menu/manage/main-menu", array('absolute' => TRUE)),
       'url' => url('root/parent', array('absolute' => TRUE)),
       'url:absolute' => url('root/parent', array('absolute' => TRUE)),
@@ -376,7 +374,7 @@ class TokenMenuTestCase extends TokenTestHelper {
       'parent' => 'Root link',
       'parent:mlid' => $root_link['mlid'],
       'parent:title' => 'Root link',
-      'parent:menu' => 'Main menu',
+      'parent:menu' => 'Primary navigation',
       'parent:parent' => NULL,
       'parents' => 'Root link',
       'parents:count' => 1,
@@ -396,14 +394,14 @@ class TokenMenuTestCase extends TokenTestHelper {
       'customized' => 0,
       'description' => '',
     );
-    $node = $this->drupalCreateNode(array('menu' => $node_link));
+    $node = $this->backdropCreateNode(array('menu' => $node_link));
 
     // Test [node:menu] tokens.
     $tokens = array(
       'menu-link' => 'Node link',
       'menu-link:mlid' => $node->menu['mlid'],
       'menu-link:title' => 'Node link',
-      'menu-link:menu' => 'Main menu',
+      'menu-link:menu' => 'Primary navigation',
       'menu-link:url' => url('node/' . $node->nid, array('absolute' => TRUE)),
       'menu-link:url:path' => 'node/' . $node->nid,
       'menu-link:edit-url' => url("admin/structure/menu/item/{$node->menu['mlid']}/edit", array('absolute' => TRUE)),
@@ -429,6 +427,7 @@ class TokenMenuTestCase extends TokenTestHelper {
 }
 
 class TokenTaxonomyTestCase extends TokenTestHelper {
+  protected $profile = 'standard';
   protected $vocab;
 
   public function setUp($modules = array()) {
@@ -436,10 +435,10 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
     parent::setUp($modules);
 
     // Create the default tags vocabulary.
-    $vocabulary = (object) array(
+    $vocabulary = new TaxonomyVocabulary(array(
       'name' => 'Tags',
       'machine_name' => 'tags',
-    );
+    ));
     taxonomy_vocabulary_save($vocabulary);
     $this->vocab = $vocabulary;
   }
@@ -465,7 +464,7 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
     );
     $this->assertTokens('term', array('term' => $root_term), $tokens);
 
-    $parent_term = $this->addTerm($this->vocab, array('name' => 'Parent term', 'parent' => $root_term->tid));
+    $parent_term = $this->addTerm($this->vocab, array('name' => 'Parent term', 'parents' => array($root_term->tid)));
     $tokens = array(
       'url' => url("taxonomy/term/{$parent_term->tid}", array('absolute' => TRUE)),
       'url:absolute' => url("taxonomy/term/{$parent_term->tid}", array('absolute' => TRUE)),
@@ -483,7 +482,7 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
     );
     $this->assertTokens('term', array('term' => $parent_term), $tokens);
 
-    $term = $this->addTerm($this->vocab, array('name' => 'Test term', 'parent' => $parent_term->tid));
+    $term = $this->addTerm($this->vocab, array('name' => 'Test term', 'parents' => array($parent_term->tid)));
     $tokens = array(
       'parents' => 'Root term, Parent term',
       'parents:count' => 2,
@@ -506,20 +505,21 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
 
   function addVocabulary(array $vocabulary = array()) {
     $vocabulary += array(
-      'name' => drupal_strtolower($this->randomName(5)),
+      'name' => backdrop_strtolower($this->randomName(5)),
       'nodes' => array('article' => 'article'),
     );
-    $vocabulary = (object) $vocabulary;
+    $vocabulary = new TaxonomyVocabulary($vocabulary);
     taxonomy_vocabulary_save($vocabulary);
     return $vocabulary;
   }
 
-  function addTerm(stdClass $vocabulary, array $term = array()) {
+  function addTerm(TaxonomyVocabulary $vocabulary, array $term = array()) {
     $term += array(
-      'name' => drupal_strtolower($this->randomName(5)),
-      'vid' => $vocabulary->vid,
+      'name' => backdrop_strtolower($this->randomName(5)),
+      'vocabulary' => $vocabulary->machine_name,
+      'parents' => array(0),
     );
-    $term = (object) $term;
+    $term = new TaxonomyTerm($term);
     taxonomy_term_save($term);
     return $term;
   }
@@ -544,15 +544,15 @@ class TokenUserTestCase extends TokenTestHelper {
       $this->fail('Could not create directory ' . $picture_path . '.');
     }
 
-    $this->account = $this->drupalCreateUser(array('administer users'));
-    $this->drupalLogin($this->account);
+    $this->account = $this->backdropCreateUser(array('administer users'));
+    $this->backdropLogin($this->account);
   }
 
   function testUserTokens() {
     // Add a user picture to the account.
-    $image = current($this->drupalGetTestFiles('image'));
-    $edit = array('files[picture_upload]' => drupal_realpath($image->uri));
-    $this->drupalPost('user/' . $this->account->uid . '/edit', $edit, t('Save'));
+    $image = current($this->backdropGetTestFiles('image'));
+    $edit = array('files[picture_upload]' => backdrop_realpath($image->uri));
+    $this->backdropPost('user/' . $this->account->uid . '/edit', $edit, t('Save'));
 
     // Load actual user data from database.
     $this->account = user_load($this->account->uid, TRUE);
@@ -569,7 +569,7 @@ class TokenUserTestCase extends TokenTestHelper {
     $this->assertTokens('user', array('user' => $this->account), $user_tokens);
 
     $edit = array('user_pictures' => FALSE);
-    $this->drupalPost('admin/config/people/accounts', $edit, 'Save configuration');
+    $this->backdropPost('admin/config/people/accounts', $edit, 'Save configuration');
     $this->assertText('The configuration options have been saved.');
 
     // Remove the simpletest-created user role.
@@ -591,7 +591,7 @@ class TokenUserTestCase extends TokenTestHelper {
     );
     $this->assertTokens('current-user', array(), $tokens);
 
-    $anonymous = drupal_anonymous_user();
+    $anonymous = backdrop_anonymous_user();
     // Mess with the role array to ensure we still get consistent output.
     $anonymous->roles[BACKDROP_ANONYMOUS_ROLE] = BACKDROP_ANONYMOUS_ROLE;
     $tokens = array(
@@ -609,10 +609,10 @@ class TokenEntityTestCase extends TokenTestHelper {
     parent::setUp($modules);
 
     // Create the default tags vocabulary.
-    $vocabulary = (object) array(
+    $vocabulary = new TaxonomyVocabulary(array(
       'name' => 'Tags',
       'machine_name' => 'tags',
-    );
+    ));
     taxonomy_vocabulary_save($vocabulary);
     $this->vocab = $vocabulary;
   }
@@ -620,30 +620,29 @@ class TokenEntityTestCase extends TokenTestHelper {
   function testEntityMapping() {
     $this->assertIdentical(token_get_entity_mapping('token', 'node'), 'node');
     $this->assertIdentical(token_get_entity_mapping('token', 'term'), 'taxonomy_term');
-    $this->assertIdentical(token_get_entity_mapping('token', 'vocabulary'), 'taxonomy_vocabulary');
     $this->assertIdentical(token_get_entity_mapping('token', 'invalid'), FALSE);
     $this->assertIdentical(token_get_entity_mapping('token', 'invalid', TRUE), 'invalid');
     $this->assertIdentical(token_get_entity_mapping('entity', 'node'), 'node');
     $this->assertIdentical(token_get_entity_mapping('entity', 'taxonomy_term'), 'term');
-    $this->assertIdentical(token_get_entity_mapping('entity', 'taxonomy_vocabulary'), 'vocabulary');
     $this->assertIdentical(token_get_entity_mapping('entity', 'invalid'), FALSE);
     $this->assertIdentical(token_get_entity_mapping('entity', 'invalid', TRUE), 'invalid');
 
     // Test that when we send the mis-matched entity type into token_replace()
     // that we still get the tokens replaced.
-    $vocabulary = taxonomy_vocabulary_machine_name_load('tags');
+    $vocabulary = taxonomy_vocabulary_load('tags');
     $term = $this->addTerm($vocabulary);
     $this->assertIdentical(token_replace('[vocabulary:name]', array('taxonomy_vocabulary' => $vocabulary)), $vocabulary->name);
     $this->assertIdentical(token_replace('[term:name][term:vocabulary:name]', array('taxonomy_term' => $term)), $term->name . $vocabulary->name);
   }
 
-  function addTerm(stdClass $vocabulary, array $term = array()) {
+  function addTerm(TaxonomyVocabulary $vocabulary, array $term = array()) {
     $term += array(
-      'name' => drupal_strtolower($this->randomName(5)),
-      'vid' => $vocabulary->vid,
+      'name' => backdrop_strtolower($this->randomName(5)),
+      'vocabulary' => $vocabulary->machine_name,
+      'parents' => array(0),
     );
-    $term = (object) $term;
-    taxonomy_term_save($term);
+    $term = new TaxonomyTerm($term);
+    $term->save();
     return $term;
   }
 
@@ -651,7 +650,7 @@ class TokenEntityTestCase extends TokenTestHelper {
    * Test the [entity:original:*] tokens.
    */
   function testEntityOriginal() {
-    $node = $this->drupalCreateNode(array('title' => 'Original title'));
+    $node = $this->backdropCreateNode(array('title' => 'Original title'));
 
     $tokens = array(
       'nid' => $node->nid,
@@ -677,121 +676,10 @@ class TokenEntityTestCase extends TokenTestHelper {
 }
 
 /**
- * Test the profile tokens.
- */
-class TokenProfileTestCase extends TokenTestHelper {
-  private $account;
-
-  public function setUp($modules = array()) {
-    $modules[] = 'profile';
-    parent::setUp($modules);
-    $this->account = $this->drupalCreateUser(array('administer users'));
-    $this->drupalLogin($this->account);
-  }
-
-  /**
-   * Test the profile tokens.
-   */
-  function testProfileTokens() {
-    $field_types = _profile_field_types();
-    foreach (array_keys($field_types) as $field_type) {
-      $field = array();
-      switch ($field_type) {
-        case 'checkbox':
-          $field['title'] = 'This is a checkbox';
-          break;
-        case 'selection':
-          $field['options'] = implode("\n", array('Red', 'Blue', 'Green'));
-          break;
-      }
-      $this->addProfileField($field_type, $field);
-    }
-
-    // Submit the profile fields for the user.
-    $edit = array(
-      'profile_textfield' => 'This is a text field',
-      'profile_textarea' => "First paragraph.\n\nSecond paragraph.",
-      'profile_checkbox' => TRUE,
-      'profile_selection' => 'Red',
-      'profile_list' => ' Backdrop ,  Joomla ',
-      'profile_url' => 'http://www.example.com/',
-      'profile_date[month]' => 5,
-      'profile_date[day]' => 20,
-      'profile_date[year]' => 1984,
-    );
-    $this->drupalPost("user/{$this->account->uid}/edit/SimpleTest", $edit, 'Save');
-    $account = user_load($this->account->uid, TRUE);
-
-    // Test the profile token values.
-    $tokens = array(
-      'profile-textfield' => 'This is a text field',
-      'profile-textarea' => "<p>First paragraph.</p>\n<p>Second paragraph.</p>\n",
-      'profile-checkbox' => 'This is a checkbox',
-      'profile-selection' => 'Red',
-      'profile-list' => 'Drupal, Joomla',
-      'profile-url' => 'http://www.example.com/',
-      'profile-date' => format_date(453859200, 'medium', '', NULL),
-      'profile-date:raw' => '453859200',
-      'profile-date:custom:Y' => '1984',
-    );
-    $this->assertTokens('user', array('user' => $account), $tokens);
-
-    // 'Un-select' the checkbox and select profile fields.
-    $edit = array(
-      'profile_checkbox' => FALSE,
-      'profile_selection' => '0',
-    );
-    $this->drupalPost("user/{$this->account->uid}/edit/SimpleTest", $edit, 'Save');
-    $account = user_load($this->account->uid, TRUE);
-
-    // The checkbox and select profile tokens should no longer return a value.
-    $tokens = array(
-      'profile-checkbox' => NULL,
-      'profile-selection' => NULL,
-    );
-    $this->assertTokens('user', array('user' => $account), $tokens);
-  }
-
-  /**
-   * Add a profile field.
-   *
-   * @param $type
-   *   The profile field type.
-   * @param $field
-   *   (optional) An array of the profile field properties.
-   *
-   * @return
-   *   The saved profile field record object.
-   *
-   * @see drupal_form_submit()
-   */
-  function addProfileField($type, array $field = array()) {
-    $field += array(
-      'type' => $type,
-      'category' => 'SimpleTest',
-      'title' => $this->randomName(8),
-      'name' => 'profile_' . $type,
-      'explanation' => $this->randomName(50),
-      'autocomplete' => 0,
-      'required' => 0,
-      'register' => 0,
-    );
-    drupal_write_record('profile_field', $field);
-
-    // Verify the profile field was created successfully.
-    $saved_field = db_query("SELECT * FROM {profile_field} WHERE type = :type AND name = :name", array(':type' => $type, ':name' => $field['name']))->fetchObject();
-    if (empty($saved_field)) {
-      $this->fail(t('Failed to create profile field @name.', array('@name' => $saved_field->name)));
-    }
-
-    return $saved_field;
-  }
-}
-
-/**
  * Test the current page tokens.
  */
 class TokenCurrentPageTestCase extends TokenTestHelper {
+  protected $profile = 'standard';
   protected $config;
 
   function testCurrentPageTokens() {
@@ -816,7 +704,7 @@ class TokenCurrentPageTestCase extends TokenTestHelper {
     );
     $this->assertPageTokens('', $tokens);
 
-    $node = $this->drupalCreateNode(array('title' => 'Node title', 'path' => array('alias' => 'node-alias')));
+    $node = $this->backdropCreateNode(array('title' => 'Node title', 'path' => array('alias' => 'node-alias')));
     $tokens = array(
       '[current-page:title]' => 'Node title',
       '[current-page:url]' => url("node/{$node->nid}", array('absolute' => TRUE)),
@@ -865,11 +753,11 @@ class TokenArrayTestCase extends TokenTestHelper {
     );
     $this->assertTokens('array', array('array' => $array), $tokens);
 
-    // Test a mixed simple and render array.
+    // Test a render array.
     // 2 => c, 0 => a, 4 => d, 1 => b
     $array = array(
       '#property' => 'value',
-      0 => 'a',
+      0 => array('#markup' => 'a', '#weight' => -0.001),
       1 => array('#markup' => 'b', '#weight' => 0.01),
       2 => array('#markup' => 'c', '#weight' => -10),
       4 => array('#markup' => 'd', '#weight' => 0),
@@ -890,7 +778,7 @@ class TokenArrayTestCase extends TokenTestHelper {
       'join:, ' => 'c, a, d, b',
       'join: ' => 'c a d b',
     );
-    $this->assertTokens('array', array('array' => $array), $tokens);
+    $this->assertTokens('array', array('array' => $array), $tokens, array('array sort' => TRUE));
   }
 }
 
@@ -913,26 +801,11 @@ class TokenRandomTestCase extends TokenTestHelper {
   }
 }
 
-/**
- * @todo Remove when http://drupal.org/node/1173706 is fixed.
- */
-class TokenDateTestCase extends TokenTestHelper {
-
-  function testDateTokens() {
-    $tokens = array(
-      'token_test' => '1984',
-      'invalid_format' => NULL,
-    );
-
-    $this->assertTokens('date', array('date' => 453859200), $tokens);
-  }
-}
-
 class TokenFileTestCase extends TokenTestHelper {
 
   function testFileTokens() {
     // Create a test file object.
-    $file = new stdClass();
+    $file = new File();
     $file->fid = 1;
     $file->filename = 'test.png';
     $file->filesize = 100;
@@ -960,6 +833,7 @@ class TokenFileTestCase extends TokenTestHelper {
 }
 
 class TokenBlockTestCase extends TokenTestHelper {
+  protected $profile = 'standard';
   protected $config;
 
   public function setUp($modules = array()) {
@@ -967,29 +841,34 @@ class TokenBlockTestCase extends TokenTestHelper {
     $modules[] = 'block';
     parent::setUp($modules);
 
-    $this->admin_user = $this->drupalCreateUser(array('access content', 'administer blocks'));
-    $this->drupalLogin($this->admin_user);
+    $this->admin_user = $this->backdropCreateUser(array('access content', 'administer blocks', 'administer layouts'));
+    $this->backdropLogin($this->admin_user);
   }
 
   public function testBlockTitleTokens() {
     $edit['title'] = '[user:name]';
     $edit['info'] = 'Test token title block';
     $edit['body[value]'] = 'This is the test token title block.';
-    $this->drupalPost('admin/structure/block/add', $edit, 'Save block');
+    $this->backdropPost('admin/structure/block/add', $edit, 'Save block');
     // Ensure token validation is working on the block.
-    $this->assertText('The Block title is using the following invalid tokens: [user:name].');
+    $this->assertText('The Title is using the following invalid tokens: [user:name].');
 
     // Create the block for real now with a valid title.
     $edit['title'] = '[current-page:title] block title';
-    $edit['regions[bartik]'] = 'sidebar_first';
-    $this->drupalPost(NULL, $edit, 'Save block');
+    $this->backdropPost(NULL, $edit, 'Save block');
 
-    $this->drupalGet('node');
-    $this->assertText('Welcome to ' . $this->config->get('site_name') . ' block title');
+    // Add to the default layout.
+    $this->backdropGet('admin/structure/layouts/manage/default/add-block/editor/sidebar');
+    $this->clickLink('Test token title block');
+    $this->backdropPost(NULL, array(), 'Add block');
+    $this->backdropPost(NULL, array(), 'Save layout');
+
+    $this->backdropGet('node');
+    $this->assertText('Welcome to ' . config_get('system.core', 'site_name') . ' block title');
 
     // Ensure that tokens are not double-escaped when output as a block title.
-    $node = $this->drupalCreateNode(array('title' => "Site's first node"));
-    $this->drupalGet('node/' . $node->nid);
+    $node = $this->backdropCreateNode(array('title' => "Site's first node"));
+    $this->backdropGet('node/' . $node->nid);
     // The apostraphe should only be escaped once via check_plain().
     $this->assertRaw("Site&#039;s first node block title");
   }
