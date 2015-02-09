@@ -298,7 +298,7 @@ class TokenNodeTestCase extends TokenTestHelper {
       'content-type:node-count' => 1,
       'content-type:edit-url' => url('admin/structure/types/manage/page', array('absolute' => TRUE)),
       // Deprecated tokens.
-      'tnid' => 0,
+      //'tnid' => 0,
       'type' => 'page',
       'type-name' => 'Basic page',
       'url:alias' => 'content/source-node',
@@ -464,7 +464,7 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
     );
     $this->assertTokens('term', array('term' => $root_term), $tokens);
 
-    $parent_term = $this->addTerm($this->vocab, array('name' => 'Parent term', 'parents' => array($root_term->tid)));
+    $parent_term = $this->addTerm($this->vocab, array('name' => 'Parent term', 'parent' => array($root_term->tid)));
     $tokens = array(
       'url' => url("taxonomy/term/{$parent_term->tid}", array('absolute' => TRUE)),
       'url:absolute' => url("taxonomy/term/{$parent_term->tid}", array('absolute' => TRUE)),
@@ -482,7 +482,7 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
     );
     $this->assertTokens('term', array('term' => $parent_term), $tokens);
 
-    $term = $this->addTerm($this->vocab, array('name' => 'Test term', 'parents' => array($parent_term->tid)));
+    $term = $this->addTerm($this->vocab, array('name' => 'Test term', 'parent' => array($parent_term->tid)));
     $tokens = array(
       'parents' => 'Root term, Parent term',
       'parents:count' => 2,
@@ -517,7 +517,7 @@ class TokenTaxonomyTestCase extends TokenTestHelper {
     $term += array(
       'name' => backdrop_strtolower($this->randomName(5)),
       'vocabulary' => $vocabulary->machine_name,
-      'parents' => array(0),
+      'parent' => array(0),
     );
     $term = new TaxonomyTerm($term);
     taxonomy_term_save($term);
@@ -631,7 +631,6 @@ class TokenEntityTestCase extends TokenTestHelper {
     // that we still get the tokens replaced.
     $vocabulary = taxonomy_vocabulary_load('tags');
     $term = $this->addTerm($vocabulary);
-    $this->assertIdentical(token_replace('[vocabulary:name]', array('taxonomy_vocabulary' => $vocabulary)), $vocabulary->name);
     $this->assertIdentical(token_replace('[term:name][term:vocabulary:name]', array('taxonomy_term' => $term)), $term->name . $vocabulary->name);
   }
 

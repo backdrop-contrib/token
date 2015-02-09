@@ -26,8 +26,6 @@ function token_token_info_alter(&$info) {
   $info['tokens']['file']['size']['description'] = t('The size of the file.');
 
   // Remove deprecated tokens from being listed.
-  unset($info['tokens']['node']['tnid']);
-  unset($info['tokens']['node']['type']);
   unset($info['tokens']['node']['type-name']);
 
   // Support 'url' type tokens for core tokens.
@@ -526,14 +524,6 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
 
     foreach ($tokens as $name => $original) {
       switch ($name) {
-        case 'name':
-          // This is a machine name so does not ever need to be sanitized.
-          $replacements[$original] = $vocabulary->name;
-          break;
-        case 'machine-name':
-          // This is a machine name so does not ever need to be sanitized.
-          $replacements[$original] = $vocabulary->machine_name;
-          break;
         case 'edit-url':
           $replacements[$original] = url("admin/structure/taxonomy/{$vocabulary->machine_name}/edit", $url_options);
           break;
