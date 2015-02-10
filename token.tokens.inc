@@ -26,6 +26,7 @@ function token_token_info_alter(&$info) {
   $info['tokens']['file']['size']['description'] = t('The size of the file.');
 
   // Remove deprecated tokens from being listed.
+  unset($info['tokens']['node']['type']);
   unset($info['tokens']['node']['type-name']);
 
   // Support 'url' type tokens for core tokens.
@@ -372,7 +373,7 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
   $url_options = array('absolute' => TRUE);
   if (isset($options['language'])) {
     $url_options['language'] = $options['language'];
-    $language_code = $options['language']->language;
+    $language_code = $options['language']->langcode;
   }
   else {
     $language_code = NULL;
@@ -559,23 +560,21 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'picture':
-          if ($config->get('user_pictures')) {
+          if (config_get('system.core', 'user_pictures')) {
             $replacements[$original] = theme('user_picture', array('account' => $account));
           }
           break;
         case 'roles':
           // The roles array may be set from checkbox values so ensure it always
           // has 'proper' data with the role names.
-          $roles = array_intersect_key(user_roles(), $account->roles);
+          $roles = array_intersect_key(user_roles(), backdrop_map_assoc($account->roles));
           $replacements[$original] = token_render_array($roles, $options);
           break;
       }
     }
 
     // Chained token relationships.
-    if ($config->get('user_pictures') && !empty($account->picture) && ($picture_tokens = token_find_with_prefix($tokens, 'picture'))) {
-      // @todo Remove when core bug http://drupal.org/node/978028 is fixed.
-      $account->picture->description = '';
+    if (!empty($account->picture) && config_get('system.core', 'user_pictures') && ($picture_tokens = token_find_with_prefix($tokens, 'picture'))) {
       $replacements += token_generate('file', $picture_tokens, array('file' => $account->picture), $options);
     }
     if ($url_tokens = token_find_with_prefix($tokens, 'url')) {
@@ -584,7 +583,7 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
     if ($role_tokens = token_find_with_prefix($tokens, 'roles')) {
       // The roles array may be set from checkbox values so ensure it always
       // has 'proper' data with the role names.
-      $roles = array_intersect_key(user_roles(), $account->roles);
+      $roles = array_intersect_key(user_roles(), backdrop_map_assoc($account->roles));
       $replacements += token_generate('array', $role_tokens, array('array' => $roles), $options);
     }
   }
@@ -926,7 +925,7 @@ function token_tokens_alter(array &$replacements, array $context) {
   $options = $context['options'];
 
   $sanitize = !empty($options['sanitize']);
-  $langcode = !empty($options['language']->language) ? $options['language']->language : NULL;
+  $langcode = !empty($options['language']->langcode) ? $options['language']->langcode : NULL;
 
   // Comment token fixes.
   if ($context['type'] == 'comment' && !empty($context['data']['comment'])) {
@@ -1088,14 +1087,6 @@ function menu_tokens($type, $tokens, array $data = array(), array $options = arr
   $replacements = array();
 
   $url_options = array('absolute' => TRUE);
-  if (isset($options['language'])) {
-    $url_options['language'] = $options['language'];
-    $language_code = $options['language']->language;
-  }
-  else {
-    $language_code = NULL;
-  }
-
   $sanitize = !empty($options['sanitize']);
 
   // Node tokens.
@@ -1293,7 +1284,7 @@ function field_token_info_alter(&$info) {
 function field_tokens($type, $tokens, array $data = array(), array $options = array()) {
   $replacements = array();
   $sanitize = !empty($options['sanitize']);
-  $langcode = isset($options['language']) ? $options['language']->language : NULL;
+  $langcode = isset($options['language']) ? $options['language']->langcode : NULL;
 
   // Entity tokens.
   if ($type == 'entity' && !empty($data['entity_type']) && !empty($data['entity']) && !empty($data['token_type'])) {
