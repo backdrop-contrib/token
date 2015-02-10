@@ -1,16 +1,13 @@
-
-.token-tree {
-  font-size: 0.85em;
-}
-
+/**
+ * Styles for displaying the token tree and dialog.
+ */
 .token-dialog {
   max-width: none !important;
 }
 
-.token-dialog .token-tree {
-  margin-left: 0;
+.token-tree {
+  font-size: 0.85em;
 }
-
 .token-tree td,
 .token-tree th {
   padding-top: 0;
@@ -19,23 +16,19 @@
 }
 .token-tree .token-name {
   width: 30%;
-}
-.token-more {
-  float:right;
-}
-.token-description {
-  color: #666;
-}
-
-.token-group {
-  font-weight: bold;
-}
-
-.js .token-group {
-  font-weight: normal;
-}
-
-/* Prevent the token columns from being wrapped. */
-.token-tree td.token-key {
   white-space: nowrap;
+}
+.token-tree .token-token {
+  white-space: nowrap;
+}
+.token-tree .token-key {
+  float: left;
+}
+.token-tree .token-more {
+  float: right;
+}
+.token-tree .token-description {
+  color: #666;
+  white-space: normal;
+  clear: both;
 }
