@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Token callbacks for the token module.
@@ -91,7 +90,7 @@ function token_token_info_alter(&$info) {
  * Implements hook_token_info().
  */
 function token_token_info() {
-  $config = config('token.settings');
+  $config = config('system.core');
 
   // Node tokens.
   $info['tokens']['node']['source'] = array(
@@ -366,7 +365,7 @@ function token_token_info() {
  * Implements hook_tokens().
  */
 function token_tokens($type, $tokens, array $data = array(), array $options = array()) {
-  $config = config('token.settings');
+  $config = config('system.core');
 
   $replacements = array();
 
@@ -560,7 +559,7 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'picture':
-          if (config_get('system.core', 'user_pictures')) {
+          if ($config->get('user_pictures')) {
             $replacements[$original] = theme('user_picture', array('account' => $account));
           }
           break;
@@ -574,7 +573,7 @@ function token_tokens($type, $tokens, array $data = array(), array $options = ar
     }
 
     // Chained token relationships.
-    if (!empty($account->picture) && config_get('system.core', 'user_pictures') && ($picture_tokens = token_find_with_prefix($tokens, 'picture'))) {
+    if (!empty($account->picture) && $config->get('user_pictures') && ($picture_tokens = token_find_with_prefix($tokens, 'picture'))) {
       $replacements += token_generate('file', $picture_tokens, array('file' => $account->picture), $options);
     }
     if ($url_tokens = token_find_with_prefix($tokens, 'url')) {

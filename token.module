@@ -1206,14 +1206,3 @@ function token_node_menu_link_load($node) {
 
   return $cache[$node->nid] ? token_menu_link_load($cache[$node->nid]) : FALSE;
 }
-
-/**
- * Implements hook_config_info().
- */
-function token_config_info() {
-  $prefixes['token.settings'] = array(
-    'label' => t('Token Settings'),
-    'group' => t('Configuration'),
-  );
-  return $prefixes;
-}
