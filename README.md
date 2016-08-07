@@ -1,3 +1,6 @@
+**Important note**: This project is included in core Backdrop 1.1.0, so you no
+longer need this module.
+
 Token
 =====
 
@@ -7,10 +10,6 @@ can usually be identified by a word surrounded by square brackets, such as
 `[node:nid]`. Although core provides the token replacement mechanism, it does
 not include a UI for browsing tokens, nor tokens for a lot of its own core
 modules. This project provides the missing tokens for core, and adds a UI.
-
-*Important note*: This project is targeted for inclusion in Backdrop 1.1.0, due
-May 15, 2015. It is likely that after upgrading to Backdrop 1.1.0, you will no
-longer need this module.
 
 Installation
 ------------
