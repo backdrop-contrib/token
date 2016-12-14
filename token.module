@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Enhances the token API in core: adds a browseable UI, missing tokens, etc.
@@ -114,9 +113,9 @@ function token_menu() {
 }
 
 /**
- * Implements hook_admin_menu_output_alter().
+ * Implements hook_admin_bar_output_alter().
  */
-function token_admin_menu_output_alter(&$content) {
+function token_admin_bar_output_alter(&$content) {
   $content['icon']['icon']['flush-cache']['token'] = array(
     '#title' => t('Token registry'),
     '#href' => 'token/flush-cache',
