@@ -534,7 +534,7 @@ class TokenUserTestCase extends TokenTestHelper {
 
   public function setUp($modules = array()) {
     parent::setUp($modules);
-    $this->config = config('token.settings');
+    $this->config = config('system.core');
 
     // Enable user pictures.
     $this->config->set('user_pictures', 1);
@@ -682,7 +682,7 @@ class TokenCurrentPageTestCase extends TokenTestHelper {
   protected $config;
 
   function testCurrentPageTokens() {
-    $this->config = config('token.settings');
+    $this->config = config('system.core');
 
     $tokens = array(
       '[current-page:title]' => t('Welcome to @site-name', array('@site-name' => $this->config->get('site_name'))),
