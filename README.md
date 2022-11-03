@@ -1,10 +1,12 @@
-**Important note**: This project is included in core Backdrop 1.1.0, so you no
-longer need this module.
-
 Token
 =====
 
-Backdrop core includes the ability to replace small snippets of text with
+**Important note**: Token module was moved into Backdrop core in version 1.1.0. 
+Use of this module is no longer necessary and no further changes will be made 
+here. If you would like to report a bug or feature request against Token module, 
+file an issue in the main Backdrop CMS core repository at https://github.com/backdrop/backdrop-issues.
+
+Backdrop includes the ability to replace small snippets of text with
 dynamic replacements. These replaceable snippets are called "tokens", and
 can usually be identified by a word surrounded by square brackets, such as
 `[node:nid]`. Although core provides the token replacement mechanism, it does
